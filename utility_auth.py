@@ -1,7 +1,7 @@
 import hashlib
 
 users = {
-    "kili": hashlib.sha256("yash@143".encode()).hexdigest(),
+    "Yash": hashlib.sha256("yash@1234".encode()).hexdigest(),
     "admin": hashlib.sha256("admin@1234".encode()).hexdigest(),
     "buddy": hashlib.sha256("buddy@1234".encode()).hexdigest()
 }

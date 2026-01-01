@@ -1,53 +1,92 @@
-# Secure Socket Communication with RSA and Hashing
+# Secure Multi-Client Chat System (Python + RSA) 
 
-## Overview
-This project demonstrates a secure client–server communication system implemented in Python using **RSA encryption** and **SHA-256 hashing**. It was developed as an exercise in socket programming and cryptography, combining authentication, key exchange, and encrypted message transfer.
+A centralized server-client chat application built in Python that supports **encrypted communication** using RSA. The server can handle up to **3 clients simultaneously** (configurable) and broadcasts messages to all connected users in real time. 
 
-## Motivation
-I first explored the RSA algorithm in a smaller project during my undergraduate studies. Driven by curiosity, I extended this knowledge by experimenting with Python sockets. This project gave me the opportunity to:
-- Revisit and strengthen my understanding of RSA encryption.
-- Gain hands-on experience with hashing for password verification.
-- Explore socket-based data sharing between two devices on a shared network.
+--- 
 
-## Features
-- **User Authentication**: Passwords are verified using SHA-256 hashing.
-- **RSA Key Exchange**: Public keys are serialized and exchanged between client and server.
-- **Encrypted Communication**: Messages are encrypted with RSA before transmission and decrypted upon receipt.
-- **Bidirectional Chat**: Both server and client can send and receive secure messages.
-- **Exit Handling**: Either side can terminate the session gracefully by typing `exit`.
+## Features 
+
+- Secure login with SHA-256 password hashing 
+- RSA encryption for all communication 
+- Full duplex messaging (send/receive simultaneously) 
+- Broadcast mode: one client’s message shared with all 
+- Unique peer IDs (`Peer1`, `Peer2`, `Peer3`) 
+- Easily increase max clients via `MAX_CLIENTS` 
+
+--- 
 
 ## Project Structure
-Application_textSharing/ 
-├── server.py # Server-side program 
-├── client.py # Client-side program 
-├── utility_RSA.py # RSA key generation, encryption, decryption, serialization 
-├── utility_auth.py # User authentication with SHA-256 hashing 
-├── requirements.txt # Dependencies 
-└── README.md # Project documentation
+
+├── client.py           # Client program 
+├── server.py           # Server program 
+├── utility_auth.py # Authentication (SHA-256) 
+├── utility_RSA.py # RSA key generation & encryption
+
+---
+
+## Requirements
+- Python 3.8+
+- Libraries: `cryptography`, `pickle`, `socket`, `threading`, `hashlib`
+
+**Install cryptography:**
+    ```bash
+    pip install cryptography
+
+---
+
+## How to Run
+
+1. Start Server
+    python server.py
+    Default port: 12345
+    Max clients: 3 (edit MAX_CLIENTS to change)
+
+2. Start Client
+    python client.py
+    Enter username & password
+
+    Valid users in utility_auth.py:
+    users = {
+    "kili": sha256("yash@143"),
+    "admin": sha256("admin@1234"),
+    "buddy": sha256("buddy@1234")
+    }
+
+---
 
 ## Usage
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/syashwanth0309-coder/Text-Sharing-Application-client-server-
-   cd Application_textSharing
-2. Install dependancies:
-    python -m pip install -r requirements.txt
-3. Run the server:
-    python server.py
-4. Run the client(on the same or another device in the network):
-    python client.py
-5. Enter Credentials when promoted. calid users are defined in utility_auth.py.
 
-## Learning Outcomes
+Type message → press Enter
+Messages encrypted & broadcast to all peers
+Type exit → disconnec
 
-Through this project, I reinforced:
-Practical application of RSA encryption in socket communication.
-Secure password handling using SHA-256 hashing.
-Network programming concepts such as TCP sockets and data serialization.
+---
 
-## Future Improvements
+## Security
 
-Extend to multiple clients.
-Add TLS/SSL for layered security.
-Implement a GUI for easier interaction.
+Passwords stored as SHA-256 hashes
+RSA 2048-bit encryption
+Duplicate login prevention
+Unique peer IDs for clarity
 
+---
+
+## Example Flow
+
+Start server
+Client connects → login
+Server verifies → assigns ID
+RSA keys exchanged
+Client sends → server broadcasts
+exit → disconnect
+
+---
+
+## Scaling
+
+Increase MAX_CLIENTS in server.py
+Run more client.py instances
+
+
+## Author
+Built by S. Yashwanth — secure socket programming, RSA encryption, collaborative communication.
