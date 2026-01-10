@@ -75,10 +75,10 @@ def handle_client(conn, addr):
                     enc_msg = pickle.loads(conn.recv(4096))
                     dec_msg = decrypt(enc_msg, server_private)
                     if dec_msg.lower() == "exit":
-                        print(f"{display_name} ({username}) sent exit")
+                        print(f"{display_name} ({username}) disconnected")
                         break
 
-                    print(f"{display_name} ({addr}): {dec_msg}")
+                    print(f"{username} ({addr}): {dec_msg}")
                     # BROADCAST using display_name
                     broadcast_message(display_name, username, dec_msg)
 
