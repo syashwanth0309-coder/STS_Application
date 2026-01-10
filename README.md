@@ -19,8 +19,8 @@ A centralized server-client chat application built in Python that supports **enc
 
 ├── client.py           # Client program 
 ├── server.py           # Server program 
-├── utility_auth.py # Authentication (SHA-256) 
-├── utility_RSA.py # RSA key generation & encryption
+├── utility_auth.py     # Authentication (SHA-256) 
+├── utility_RSA.py      # RSA key generation & encryption
 
 ---
 
