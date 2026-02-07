@@ -4,6 +4,7 @@ import hashlib
 import threading
 from utility_auth import verify_user
 from utility_RSA import generate_key_pair, encrypt, decrypt, deserialize_public_key, serialize_public_key
+from utility_network import broadcast_message
 
 
 def get_sha256(text):
@@ -13,22 +14,19 @@ def get_sha256(text):
 MAX_CLIENTS = 3
 active_clients = {}
 client_lock = threading.Lock()
-next_user_index = 1  # For u1, u2, u3 naming
+next_user_index = 1
 
 
 def handle_client(conn, addr):
-    """Handle single client connection - full duplex with unique users"""
     username = None
-    display_name = None  # u1, u2, u3
+    display_name = None
     server_private, server_public = generate_key_pair()
 
     try:
         print(f"Client Requesting: {addr}")
 
         # Login phase
-        # conn.send(pickle.dumps(""))
         username = pickle.loads(conn.recv(4096))
-        # conn.send(pickle.dumps(""))
         password = pickle.loads(conn.recv(4096))
 
         # CHECKS DUPLICATE USERNAME FIRST
@@ -39,7 +37,6 @@ def handle_client(conn, addr):
                 return
 
         if verify_user(username, password):
-            # ASSIGN UNIQUE INDEX (u1, u2, u3)
             global next_user_index
             display_name = f"Peer{next_user_index}"
             next_user_index += 1
@@ -56,10 +53,10 @@ def handle_client(conn, addr):
         client_public_pem = pickle.loads(conn.recv(4096))
         client_public = deserialize_public_key(client_public_pem)
 
-        # Store active client with UNIQUE display_name
+        # Store active client
         with client_lock:
             active_clients[username] = {
-                'display_name': display_name,  # u1, u2, u3
+                'display_name': display_name,
                 'conn': conn,
                 'public_key': client_public,
                 'server_private': server_private,
@@ -72,15 +69,26 @@ def handle_client(conn, addr):
         def receive_thread():
             while username in active_clients:
                 try:
-                    enc_msg = pickle.loads(conn.recv(4096))
+                    data = conn.recv(4096)
+                    if not data:
+                        break
+                    enc_msg = pickle.loads(data)
                     dec_msg = decrypt(enc_msg, server_private)
+
                     if dec_msg.lower() == "exit":
                         print(f"{display_name} ({username}) disconnected")
                         break
 
                     print(f"{username} ({addr}): {dec_msg}")
-                    # BROADCAST using display_name
-                    broadcast_message(display_name, username, dec_msg)
+
+                    # Handle client broadcast format: "Peer1|message"
+                    if '|' in dec_msg:
+                        sender_display, message = dec_msg.split('|', 1)
+                        broadcast_message(
+                            active_clients, client_lock, sender_display, username, message)
+                    else:
+                        # Regular message - just log
+                        print(f"LOG [{display_name} ({username})]: {dec_msg}")
 
                 except:
                     break
@@ -88,18 +96,20 @@ def handle_client(conn, addr):
         recv_thread = threading.Thread(target=receive_thread, daemon=True)
         recv_thread.start()
 
-        # Server send loop - now broadcasts to ALL
+        # Server send loop - broadcasts to ALL
         while username in active_clients:
-            reply = input()
-            if reply.lower() == "exit":
+            try:
+                reply = input()
+                if reply.lower() == "exit":
+                    break
+                broadcast_message(active_clients, client_lock,
+                                  "MAIN", "SERVER", reply)
+            except KeyboardInterrupt:
                 break
-            # Broadcast server message to ALL clients
-            broadcast_message("MAIN", "SERVER", reply)
 
     except Exception as e:
         print(f"Error with {username} ({display_name}): {e}")
     finally:
-        # Cleanup
         with client_lock:
             if username in active_clients:
                 del active_clients[username]
@@ -109,31 +119,16 @@ def handle_client(conn, addr):
             f"Client {display_name} ({username}) disconnected. Active: {len(active_clients)}")
 
 
-def broadcast_message(sender_display, sender_name, message):
-    """Send message to ALL other clients using display_name (u1,u2,u3)"""
-    with client_lock:
-        for client_username, client_data in active_clients.items():
-            try:
-                # Show sender as "u1" format
-                sender_info = f"{sender_display} ({sender_name})"
-                enc_msg = encrypt(
-                    f"[{sender_info}]: {message}", client_data['public_key'])
-                client_data['conn'].send(pickle.dumps(enc_msg))
-            except:
-                print(f"Failed to send to {client_username}")
-
-
 def server_program():
     global next_user_index
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(("0.0.0.0", 12345))
     s.listen(MAX_CLIENTS)
-    print(
-        f"Server listening on port 12345 (MAX {MAX_CLIENTS} unique clients)")
-    print("Users will be assigned: u1, u2, u3 by connection order")
+    print(f"Server listening on port 12345 (MAX {MAX_CLIENTS} unique clients)")
+    print("Users will be assigned: Peer1, Peer2, Peer3 by connection order")
 
-    while len(active_clients) < MAX_CLIENTS:
+    while True:
         try:
             conn, addr = s.accept()
             if len(active_clients) >= MAX_CLIENTS:
@@ -146,7 +141,6 @@ def server_program():
                 target=handle_client, args=(conn, addr))
             client_thread.daemon = True
             client_thread.start()
-
         except KeyboardInterrupt:
             print("\nShutting down server...")
             break

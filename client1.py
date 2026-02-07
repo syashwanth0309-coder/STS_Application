@@ -8,7 +8,7 @@ def client_program():
     client_private, client_public = generate_key_pair()
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect(("127.0.0.1", 12345))  # replace with server IP
+    s.connect(("127.0.0.1", 12345))
     print("Connected to server...")
 
     # Login phase
@@ -24,6 +24,10 @@ def client_program():
         s.close()
         return
 
+    # Extract display_name from login message
+    display_name = login_msg.split("ID: ")[-1].strip(")")
+    print(f"Your display name: {display_name}")
+
     # Exchange public keys
     s.send(pickle.dumps(serialize_public_key(client_public)))
     server_public_pem = pickle.loads(s.recv(4096))
@@ -36,7 +40,10 @@ def client_program():
     def receive_thread():
         while True:
             try:
-                enc_msg = pickle.loads(s.recv(4096))
+                data = s.recv(4096)
+                if not data:
+                    break
+                enc_msg = pickle.loads(data)
                 dec_msg = decrypt(enc_msg, client_private)
                 if dec_msg.lower() == "exit":
                     print("\nServer disconnected you.")
@@ -45,15 +52,13 @@ def client_program():
             except:
                 print("\nConnection lost.")
                 break
-
         s.close()
         print("Disconnected.")
 
-    # Start receive thread FIRST for true full duplex
     recv_thread = threading.Thread(target=receive_thread, daemon=True)
     recv_thread.start()
 
-    # Send loop
+    # Send loop - broadcasts using display_name
     try:
         while True:
             reply = input()
@@ -61,7 +66,9 @@ def client_program():
                 enc_reply = encrypt(reply, server_public)
                 s.send(pickle.dumps(enc_reply))
                 break
-            enc_reply = encrypt(reply, server_public)
+            # Send message with display_name prefix for server broadcast
+            broadcast_msg = f"{display_name}|{reply}"
+            enc_reply = encrypt(broadcast_msg, server_public)
             s.send(pickle.dumps(enc_reply))
     except KeyboardInterrupt:
         print("\nGoodbye!")
@@ -71,3 +78,4 @@ def client_program():
 
 if __name__ == "__main__":
     client_program()
+# broadcast_message
